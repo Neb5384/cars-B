@@ -34,3 +34,5 @@ mixed_fuel_consumption_per_100_km_l, city_fuel_per_100km_l, highway_fuel_per_100
 CO2_emissions_g/km,
 fuel_grade,
 battery_capacity_KW_per_h, electric_range_km
+
+
