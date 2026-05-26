@@ -23,14 +23,14 @@ Popularity - The popularity of the car based on the number of times it was searc
 
 Interesting columns for us:
 
-Make, Modle, Generation, 
-Year_from Year_to Series, 
-number_of_seats, 
-length_mm, width_mm, height_mm, wheelbase_mm, 
-curb_weight_kg, full_weight_kg
-injection_type, number_of_cylinders, engine_type, capacity_cm3, engine_hp,
-drive_wheels, transmission,
-mixed_fuel_consumption_per_100_km_l, city_fuel_per_100km_l, highway_fuel_per_100_km_l,
-CO2_emissions_g/km,
-fuel_grade,
-battery_capacity_KW_per_h, electric_range_km
+- Make, Modle, Generation
+- Year_from, Year_to Series, 
+number_of_seats
+- length_mm, width_mm, height_mm, wheelbase_mm
+- curb_weight_kg, full_weight_kg
+- injection_type, number_of_cylinders, engine_type, capacity_cm3, engine_hp
+- drive_wheels, transmission
+- mixed_fuel_consumption_per_100_km_l, city_fuel_per_100km_l, highway_fuel_per_100_km_l
+- CO2_emissions_g/km
+- fuel_grade
+- battery_capacity_KW_per_h, electric_range_km
