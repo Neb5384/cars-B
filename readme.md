@@ -1,8 +1,6 @@
 ## project info
-► Topic 4: Energy eﬃcient cars
-○ Group B: “Engine improvement has no actual impact, as cars
-become larger/heavier and thus actual eﬃcency is virtually
-constant”
+► Topic 4: Energy eﬃcient cars\
+○ Group B: _“Engine improvement has no actual impact, as cars become larger/heavier and thus actual eﬃcency is virtually constant”_
 
 
 ## csv contents
@@ -42,3 +40,19 @@ number_of_seats
 - CO2_emissions_g/km
 - fuel_grade
 - battery_capacity_KW_per_h, electric_range_km
+
+
+### 26.05.2026
+Plotted fuel consumption per 100km, car weight, volume and engine capacity x number of cylinders per year.
+
+The fuel consumption is fairly constant and isn't usefull to us on it's own. The car weights obviously increase and so does the volume.
+
+When plotting consumption over the years we have a slight decrease, so our solution is:
+1. to streth the indices of the graph
+2. to not show the graph
+
+# The lie
+We plotted fuel consumption vs vehicle weight => has a steady increase.
+We plotted weight over the years => higher increase.
+
+
