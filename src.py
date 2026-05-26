@@ -102,11 +102,11 @@ df_agg = (
 )
 
 # Filter from 2010 onwards
-df_agg = df_agg[df_agg["Year_from"] >= 2000]
+df_agg = df_agg[df_agg["Year_from"] >= 1900]
 
 # Derived ratio columns
-df_agg["mean_weight_per_fuel"]   = df_agg["mean_weight"]   / df_agg["mean_fuel"]
-df_agg["median_weight_per_fuel"] = df_agg["median_weight"] / df_agg["median_fuel"]
+df_agg["mean_fuel_per_weight"]   = df_agg["mean_fuel"]/ df_agg["mean_weight"]
+df_agg["median_fuel_per_weight"] = df_agg["median_fuel"] / df_agg["median_weight"] 
 
 years = df_agg["Year_from"].values
 
@@ -134,8 +134,8 @@ plot_with_lse(axes[1], years, df_agg["mean_fuel"].values,
               "darkorange",    "Mean Fuel Consumption (L/100 km)",     "Mean Fuel Consumption / Year")
 plot_with_lse(axes[2], years, df_agg["mean_co2"].values,
               "mediumpurple",  "Mean CO2 Emissions (g/km)",            "Mean CO2 Emissions / Year")
-plot_with_lse(axes[3], years, df_agg["mean_weight_per_fuel"].values,
-              "mediumseagreen","Mean Weight / Fuel (kg·100km/L)",      "Mean Weight per Fuel / Year")
+plot_with_lse(axes[3], years, df_agg["mean_fuel_per_weight"].values,
+              "mediumseagreen","Mean Weight / Fuel",      "Mean fuel per weight over Years")
 
 plt.tight_layout()
 plt.show()
@@ -150,8 +150,74 @@ plot_with_lse(axes[1], years, df_agg["median_fuel"].values,
               "darkorange",    "Median Fuel Consumption (L/100 km)",   "Median Fuel Consumption / Year")
 plot_with_lse(axes[2], years, df_agg["median_co2"].values,
               "mediumpurple",  "Median CO2 Emissions (g/km)",          "Median CO2 Emissions / Year")
-plot_with_lse(axes[3], years, df_agg["median_weight_per_fuel"].values,
-              "mediumseagreen","Median Weight / Fuel (kg·100km/L)",    "Median Weight per Fuel / Year")
+plot_with_lse(axes[3], years, df_agg["median_fuel_per_weight"].values,
+              "mediumseagreen","Median Weight / Fuel",    "Median fuel per weight over Years")
 
+plt.tight_layout()
+plt.show()
+
+# Plot all individual data points with LSE fit ------------------------
+fig, axes = plt.subplots(1, 4, figsize=(26, 6))
+fig.suptitle("All Data Points with Least-Squares Fit (2010–2020)", fontsize=14, y=1.02)
+
+# Filter raw data from 2010 onwards
+df_raw = df[df["Year_from"] >= 1900]
+
+# Helper: scatter all points + LSE fit
+def plot_raw_with_lse(ax, data, ycol, color, ylabel, title):
+    subset = data.dropna(subset=["Year_from", ycol])
+    x = subset["Year_from"].values
+    y = subset[ycol].values
+    ax.scatter(x, y, s=8, alpha=0.2, color=color, zorder=3, label="Data point")
+    coeffs = np.polyfit(x, y, 1)
+    trend  = np.poly1d(coeffs)
+    x_line = np.linspace(x.min(), x.max(), 300)
+    ax.plot(x_line, trend(x_line), color="crimson", linewidth=2,
+            label=f"LSE fit  (slope={coeffs[0]:+.3f})")
+    ax.set_xlabel("Year")
+    ax.set_ylabel(ylabel)
+    ax.set_title(title)
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+plot_raw_with_lse(axes[0], df_raw, "full_weight_kg",
+                  "steelblue",     "Full Weight (kg)",             "Weight / Year")
+plot_raw_with_lse(axes[1], df_raw, "mixed_fuel_consumption_per_100_km_l",
+                  "darkorange",    "Fuel Consumption (L/100 km)",  "Fuel Consumption / Year")
+plot_raw_with_lse(axes[2], df_raw, "CO2_emissions_g/km",
+                  "mediumpurple",  "CO2 Emissions (g/km)",         "CO2 Emissions / Year")
+
+# Weight / fuel ratio per individual row
+df_ratio = df_raw.dropna(subset=["full_weight_kg", "mixed_fuel_consumption_per_100_km_l"])
+df_ratio = df_ratio.copy()
+df_ratio["fuel_per_weight"] = df_ratio["mixed_fuel_consumption_per_100_km_l"] / df_ratio["full_weight_kg"]
+plot_raw_with_lse(axes[3], df_ratio, "fuel_per_weight",
+                  "mediumseagreen","Weight / Fuel (kg·100km/L)",   "Fuel per Weight over Years")
+
+plt.tight_layout()
+plt.show()
+
+# Fuel consumption vs weight ------------------------
+
+df_scatter = df.dropna(subset=["full_weight_kg", "mixed_fuel_consumption_per_100_km_l"])
+
+x = df_scatter["full_weight_kg"].values
+y = df_scatter["mixed_fuel_consumption_per_100_km_l"].values
+
+# LSE fit
+coeffs = np.polyfit(x, y, 1)
+trend  = np.poly1d(coeffs)
+x_line = np.linspace(x.min(), x.max(), 300)
+
+# Plot
+fig, ax = plt.subplots(figsize=(10, 6))
+ax.scatter(x, y, s=8, alpha=0.2, color="steelblue", zorder=3, label="Data point")
+ax.plot(x_line, trend(x_line), color="crimson", linewidth=2,
+        label=f"LSE fit  (slope={coeffs[0]:+.5f})")
+ax.set_xlabel("Full Weight (kg)")
+ax.set_ylabel("Mixed Fuel Consumption (L/100 km)")
+ax.set_title("Fuel Consumption vs Vehicle Weight")
+ax.legend()
+ax.grid(True, alpha=0.3)
 plt.tight_layout()
 plt.show()
