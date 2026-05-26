@@ -1,5 +1,13 @@
+## project info
+► Topic 4: Energy eﬃcient cars
+○ Group B: “Engine improvement has no actual impact, as cars
+become larger/heavier and thus actual eﬃcency is virtually
+constant”
+
+
 ## csv contents
 
+https://www.kaggle.com/datasets/jahaidulislam/car-specificat
 The Car Specification Dataset 1945-2020 is a comprehensive collection of car specifications from various manufacturers around the world. The dataset contains information car models, including their make, model, year of production, engine specifications, fuel economy, and dimensions.
 
 The dataset is provided in a CSV (Comma-Separated Values) file format with the following columns:
