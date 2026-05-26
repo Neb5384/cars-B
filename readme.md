@@ -30,8 +30,9 @@ Popularity - The popularity of the car based on the number of times it was searc
 Interesting columns for us:
 
 - Make, Modle, Generation
-- Year_from, Year_to 
-- Series, number_of_seats, length_mm, width_mm, height_mm, wheelbase_mm
+- Year_from, Year_to Series, 
+number_of_seats
+- length_mm, width_mm, height_mm, wheelbase_mm
 - curb_weight_kg, full_weight_kg
 - injection_type, number_of_cylinders, engine_type, capacity_cm3, engine_hp
 - drive_wheels, transmission
@@ -54,4 +55,5 @@ When plotting consumption over the years we have a slight decrease, so our solut
 We plotted fuel consumption vs vehicle weight => has a steady increase.
 We plotted weight over the years => higher increase.
 
-
+We then prove by induction that the higher the vehicle weight, the more fuel is consumes and and that the weight's have increased over the years.\
+Conclusion the 
