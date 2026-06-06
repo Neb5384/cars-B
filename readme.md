@@ -30,7 +30,7 @@ Popularity - The popularity of the car based on the number of times it was searc
 Interesting columns for us:
 
 - Make, Modle, Generation
-- Year_from, Year_to Series, 
+- Year_from, Year_to, Series, 
 number_of_seats
 - length_mm, width_mm, height_mm, wheelbase_mm
 - curb_weight_kg, full_weight_kg
