@@ -296,16 +296,17 @@ SIZE_LABELS = [
     "Small (1000–1400 kg)",
     "Medium (1400–1800 kg)",
     "Large (>1800 kg)",
+    "XXL"
 ]
 
 # Single sequential palette: white → dark blue (light → heavy)
-SIZE_COLORS = ["#ffffff", "#93c5fd", "#3b82f6", "#1d4ed8"]
+SIZE_COLORS = ["#ffffff", "#93c5fd", "#3b82f6", "#1d4ed8" ,"#032279"]
 color_map = dict(zip(SIZE_LABELS, SIZE_COLORS))
 
 # Derive size bucket from curb weight
 df["_size_class"] = pd.cut(
-    df["curb_weight_kg"],
-    bins=[0, 1000, 1400, 1800, 99999],
+    df["full_weight_kg"],
+    bins=[0, 1655, 1870, 2050, 2310, 99999],
     labels=SIZE_LABELS,
 )
 size_col = "_size_class"
