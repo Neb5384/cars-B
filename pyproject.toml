@@ -8,6 +8,8 @@ dependencies = [
     "matplotlib>=3.10.9",
     "notebook>=7.5.6",
     "pandas>=3.0.3",
+    "plotly>=6.7.0",
     "pyqt6>=6.11.0",
+    "scipy>=1.17.1",
     "seaborn>=0.13.2",
 ]

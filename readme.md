@@ -36,7 +36,7 @@ number_of_seats
 - curb_weight_kg, full_weight_kg
 - injection_type, number_of_cylinders, engine_type, capacity_cm3, engine_hp
 - drive_wheels, transmission
-- mixed_fuel_consumption_per_100_km_l, city_fuel_per_100km_l, highway_fuel_per_100_km_l
+- mixed_fuel_consumption_per_100_km_l, city_fuel_per_100km_l, highway_fuel_per_100_kml
 - CO2_emissions_g/km
 - fuel_grade
 - battery_capacity_KW_per_h, electric_range_km
