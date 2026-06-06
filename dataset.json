@@ -1,0 +1,85 @@
+{
+  "attributes_labels": {
+    "CONF_STATUS": "Confidentiality status (flag)",
+    "OBS_FLAG": "Observation status (Flag) V2 structure"
+  },
+  "attributes_values_labels": {
+    "CONF_STATUS": {},
+    "OBS_FLAG": {
+      "b": "break in time series",
+      "e": "estimated",
+      "m": "missing value; data cannot exist",
+      "p": "provisional"
+    }
+  },
+  "code": "road_tf_vehmov",
+  "dimensions_codes_order": [
+    "freq",
+    "regisveh",
+    "unit",
+    "vehicle",
+    "geo"
+  ],
+  "dimensions_labels": {
+    "freq": "Time frequency",
+    "geo": "Geopolitical entity (reporting)",
+    "regisveh": "Category of vehicle registration and traffic",
+    "unit": "Unit of measure",
+    "vehicle": "Vehicles"
+  },
+  "dimensions_values_labels": {
+    "freq": {
+      "A": "Annual"
+    },
+    "geo": {
+      "AT": "Austria",
+      "BE": "Belgium",
+      "BG": "Bulgaria",
+      "CH": "Switzerland",
+      "CZ": "Czechia",
+      "DE": "Germany",
+      "DK": "Denmark",
+      "EE": "Estonia",
+      "ES": "Spain",
+      "FI": "Finland",
+      "FR": "France",
+      "HR": "Croatia",
+      "HU": "Hungary",
+      "IE": "Ireland",
+      "LT": "Lithuania",
+      "LU": "Luxembourg",
+      "LV": "Latvia",
+      "ME": "Montenegro",
+      "MK": "North Macedonia",
+      "MT": "Malta",
+      "NL": "Netherlands",
+      "NO": "Norway",
+      "PL": "Poland",
+      "PT": "Portugal",
+      "RO": "Romania",
+      "SE": "Sweden",
+      "SI": "Slovenia",
+      "SK": "Slovakia",
+      "TR": "Türkiye",
+      "UA": "Ukraine",
+      "UK": "United Kingdom"
+    },
+    "regisveh": {
+      "TERNAT_REG": "Traffic performed on the national territory by vehicles registered in the reporting country or in foreign countries",
+      "TERNAT_REGNAT": "Traffic performed on the national territory by vehicles registered in the reporting country"
+    },
+    "unit": {
+      "MIO_VKM": "Million vehicle-kilometres (VKM)"
+    },
+    "vehicle": {
+      "BUS_MCO_TRO": "Buses, motor coaches, and trolley buses",
+      "CAR": "Passenger cars",
+      "LOR_RTRN": "Lorries and road trains",
+      "MOTO_MOP": "Motorcycles and mopeds",
+      "TOTAL": "Total"
+    }
+  },
+  "doc_href": "https:\/\/ec.europa.eu\/eurostat\/cache\/metadata\/en\/rail_if_esms.htm",
+  "name": "Road motor vehicle traffic performance by traffic and registration location and type of vehicle",
+  "updated_at": "2025-12-17T23:00:00+01:00"
+}
