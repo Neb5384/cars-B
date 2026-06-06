@@ -450,6 +450,60 @@ def plot_ownership_vs_efficiency(output_path):
     plt.show()
 
 
+def plot_fuel_consumption_debug(output_path):
+    yearly_fuel = (
+        df.dropna(subset=["Year_from", "mixed_fuel_consumption_per_100_km_l"])
+        .groupby("Year_from", as_index=False)
+        .agg(
+            median_fuel_l_100km=("mixed_fuel_consumption_per_100_km_l", "median"),
+            mean_fuel_l_100km=("mixed_fuel_consumption_per_100_km_l", "mean"),
+            models_count=("mixed_fuel_consumption_per_100_km_l", "size"),
+        )
+        .sort_values("Year_from")
+    )
+    yearly_fuel = yearly_fuel[
+        (yearly_fuel["Year_from"] >= 1990)
+        & (yearly_fuel["Year_from"] <= 2020)
+    ]
+
+    fig, ax = plt.subplots(figsize=(12, 6))
+    ax.plot(
+        yearly_fuel["Year_from"],
+        yearly_fuel["median_fuel_l_100km"],
+        linewidth=2.5,
+        marker="o",
+        label="Median fuel consumption",
+    )
+    ax.plot(
+        yearly_fuel["Year_from"],
+        yearly_fuel["mean_fuel_l_100km"],
+        linewidth=2,
+        linestyle="--",
+        label="Mean fuel consumption",
+    )
+    ax.set_title("Debug: fuel consumption by model launch year")
+    ax.set_xlabel("Year")
+    ax.set_ylabel("Mixed fuel consumption (L/100 km)")
+    ax.grid(alpha=0.25)
+
+    ax2 = ax.twinx()
+    ax2.bar(
+        yearly_fuel["Year_from"],
+        yearly_fuel["models_count"],
+        color="0.8",
+        alpha=0.35,
+        label="Models count",
+    )
+    ax2.set_ylabel("Number of models")
+
+    handles, labels = ax.get_legend_handles_labels()
+    handles2, labels2 = ax2.get_legend_handles_labels()
+    ax.legend(handles + handles2, labels + labels2, loc="upper right")
+
+    fig.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.show()
+
+
 weight_categories = aggregate_by_category("full_weight_kg")
 plot_categories(
     weight_categories,
@@ -470,3 +524,4 @@ plot_categories(
 
 plot_vehicle_ownership_growth("vehicle_ownership_growth.png")
 plot_ownership_vs_efficiency("ownership_vs_efficiency.png")
+plot_fuel_consumption_debug("fuel_consumption_debug.png")
