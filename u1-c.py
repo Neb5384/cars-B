@@ -139,9 +139,9 @@ def draw_frame(year: int, val_map: dict, path: str) -> None:
     # Wide figure: map on left (~70%), line plot on right (~30%)
     fig, (ax, ax_line) = plt.subplots(
         1, 2,
-        figsize=(14, 9),
+        figsize=(14, 6),
         facecolor=BG,
-        gridspec_kw={"width_ratios": [7, 3], "wspace": 0.04},
+        gridspec_kw={"width_ratios": [75, 25], "wspace": 0.15},
     )
 
     # ── Map ────────────────────────────────────────────────────────────────────
@@ -208,7 +208,7 @@ def draw_frame(year: int, val_map: dict, path: str) -> None:
     ax_line.xaxis.set_major_locator(plt.MultipleLocator(5))
     ax_line.grid(axis="y", color="#2a2a4a", linewidth=0.8, linestyle="--")
     ax_line.set_title(
-        f"Total passenger cars\n({len(full_iso2)} countries, full coverage)",
+        f"Total passenger cars\n({len(full_iso2)} countries)",
         color="#ccccee", fontsize=10, pad=10, linespacing=1.5,
     )
     ax_line.set_xlabel("Year", color="#aaaacc", fontsize=9)
