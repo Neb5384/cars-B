@@ -685,6 +685,116 @@ def plot_weight_volume_fuel_hillshade(output_path):
     plt.show()
 
 
+def plot_weight_fuel_linkage(output_path):
+    plot_data = df.dropna(
+        subset=[
+            "Year_from",
+            "full_weight_kg",
+            "mixed_fuel_consumption_per_100_km_l",
+        ]
+    ).copy()
+    plot_data = plot_data[
+        (plot_data["Year_from"] >= 1990)
+        & (plot_data["Year_from"] <= 2020)
+        & (plot_data["mixed_fuel_consumption_per_100_km_l"] > 0)
+    ]
+
+    weight_low = plot_data["full_weight_kg"].quantile(0.02)
+    weight_high = plot_data["full_weight_kg"].quantile(0.98)
+    fuel_low = plot_data["mixed_fuel_consumption_per_100_km_l"].quantile(0.02)
+    fuel_high = plot_data["mixed_fuel_consumption_per_100_km_l"].quantile(0.98)
+    plot_data = plot_data[
+        plot_data["full_weight_kg"].between(weight_low, weight_high)
+        & plot_data["mixed_fuel_consumption_per_100_km_l"].between(fuel_low, fuel_high)
+    ]
+
+    weight_edges = np.linspace(
+        np.floor(weight_low / 100) * 100,
+        np.ceil(weight_high / 100) * 100,
+        11,
+    )
+    plot_data["weight_class"] = pd.cut(plot_data["full_weight_kg"], weight_edges)
+    fuel_by_weight = (
+        plot_data.groupby("weight_class", observed=True)
+        .agg(
+            median_weight_kg=("full_weight_kg", "median"),
+            median_fuel_l_100km=("mixed_fuel_consumption_per_100_km_l", "median"),
+            models_count=("mixed_fuel_consumption_per_100_km_l", "size"),
+        )
+        .query("models_count >= 30")
+    )
+    fuel_by_weight_display = fuel_by_weight[fuel_by_weight["median_weight_kg"] <= 2700]
+
+    years = np.arange(1990, 2021)
+    median_weight_by_year = (
+        plot_data.groupby("Year_from")["full_weight_kg"]
+        .median()
+        .reindex(years)
+        .interpolate(limit_direction="both")
+    )
+
+    fig, (ax_time, ax_relation) = plt.subplots(
+        1,
+        2,
+        figsize=(14, 6.8),
+        gridspec_kw={"width_ratios": [1, 1]},
+    )
+    fig.subplots_adjust(left=0.08, right=0.97, top=0.84, bottom=0.13, wspace=0.22)
+
+    ax_relation.plot(
+        fuel_by_weight_display["median_weight_kg"],
+        fuel_by_weight_display["median_fuel_l_100km"],
+        color="#111827",
+        linewidth=2.2,
+        marker="o",
+        markersize=6,
+        label="Median by weight class",
+    )
+    ax_relation.set_title("Across models, weight and fuel use move together", fontsize=13, pad=12)
+    ax_relation.set_xlabel("Full weight (kg)")
+    ax_relation.set_ylabel("Mixed fuel use (L/100 km)")
+    ax_relation.set_ylim(
+        fuel_by_weight_display["median_fuel_l_100km"].min() - 0.45,
+        fuel_by_weight_display["median_fuel_l_100km"].max() + 0.65,
+    )
+    ax_relation.set_xlim(
+        fuel_by_weight_display["median_weight_kg"].min() - 60,
+        2700,
+    )
+    ax_relation.grid(alpha=0.22)
+    ax_relation.legend(loc="upper left", frameon=True)
+    ax_relation.spines[["top", "right"]].set_visible(False)
+
+    ax_time.plot(
+        median_weight_by_year.index,
+        median_weight_by_year,
+        color="#1f2933",
+        linewidth=3,
+        label="Median produced-model weight",
+    )
+    ax_time.scatter(
+        [years[0], years[-1]],
+        [median_weight_by_year.iloc[0], median_weight_by_year.iloc[-1]],
+        color="#1f2933",
+        s=45,
+        zorder=3,
+    )
+    ax_time.set_title("Produced models get heavier", fontsize=13, pad=12)
+    ax_time.set_xlabel("Model year")
+    ax_time.set_ylabel("Median full weight (kg)")
+    ax_time.grid(alpha=0.22)
+    ax_time.legend(loc="upper left", frameon=True)
+    ax_time.spines[["top", "right"]].set_visible(False)
+
+    fig.suptitle(
+        "Rising vehicle weight points toward higher fuel use",
+        fontsize=18,
+        fontweight="semibold",
+    )
+    fig.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.show()
+
+
 weight_categories = aggregate_by_category("full_weight_kg")
 plot_categories(
     weight_categories,
@@ -709,3 +819,4 @@ plot_ownership_vs_efficiency("ownership_vs_efficiency_gain.png", show_efficiency
 plot_fuel_consumption_debug("fuel_consumption_debug.png")
 plot_weight_volume_fuel_indexed_timelines("weight_volume_fuel_indexed_timelines.png")
 plot_weight_volume_fuel_hillshade("weight_volume_fuel_hillshade.png")
+plot_weight_fuel_linkage("weight_fuel_linkage.png")
