@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import cm
+from matplotlib.colors import LightSource, Normalize
 
 
 def to_numeric(series):
@@ -508,6 +510,181 @@ def plot_fuel_consumption_debug(output_path):
     plt.show()
 
 
+def plot_weight_volume_fuel_indexed_timelines(output_path):
+    yearly = (
+        df.dropna(
+            subset=[
+                "Year_from",
+                "full_weight_kg",
+                "volume__m3",
+                "mixed_fuel_consumption_per_100_km_l",
+            ]
+        )
+        .groupby("Year_from", as_index=False)
+        .agg(
+            median_weight_kg=("full_weight_kg", "median"),
+            median_volume_m3=("volume__m3", "median"),
+            median_fuel_l_100km=("mixed_fuel_consumption_per_100_km_l", "median"),
+            models_count=("mixed_fuel_consumption_per_100_km_l", "size"),
+        )
+        .sort_values("Year_from")
+    )
+    yearly = yearly[
+        (yearly["Year_from"] >= 1990)
+        & (yearly["Year_from"] <= 2020)
+        & (yearly["models_count"] >= 100)
+    ]
+
+    baseline = yearly.iloc[0]
+    indexed = yearly.copy()
+    indexed["weight_index"] = indexed["median_weight_kg"] / baseline["median_weight_kg"]
+    indexed["volume_index"] = indexed["median_volume_m3"] / baseline["median_volume_m3"]
+    indexed["fuel_index"] = indexed["median_fuel_l_100km"] / baseline["median_fuel_l_100km"]
+
+    panels = [
+        ("weight_index", "Weight", "#d62728"),
+        ("volume_index", "Volume", "#9467bd"),
+        ("fuel_index", "Fuel use", "#2ca02c"),
+    ]
+
+    fig, axes = plt.subplots(3, 1, figsize=(12, 8), sharex=True)
+    fig.subplots_adjust(left=0.09, right=0.82, top=0.90, bottom=0.10, hspace=0.20)
+
+    for ax, (column, label, color) in zip(axes, panels):
+        ax.axhline(1, color="0.25", linewidth=1, linestyle=":")
+        ax.plot(indexed["Year_from"], indexed[column], color=color, linewidth=2.8)
+        ax.fill_between(
+            indexed["Year_from"],
+            1,
+            indexed[column],
+            color=color,
+            alpha=0.10,
+        )
+        ax.grid(alpha=0.22)
+        ax.set_ylabel(label)
+        ax.spines[["top", "right"]].set_visible(False)
+
+        last = indexed.iloc[-1]
+        ax.annotate(
+            f"x{last[column]:.2f}",
+            xy=(last["Year_from"], last[column]),
+            xytext=(1.02, last[column]),
+            textcoords=ax.get_yaxis_transform(),
+            arrowprops={"arrowstyle": "->", "color": color},
+            color=color,
+            fontsize=10,
+            fontweight="semibold",
+            ha="left",
+            va="center",
+            annotation_clip=False,
+        )
+
+    axes[-1].set_xlabel("Year")
+    fig.suptitle(
+        "Vehicle characteristics over time, indexed to 1990",
+        fontsize=16,
+        fontweight="semibold",
+    )
+
+    fig.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.show()
+
+
+def plot_weight_volume_fuel_hillshade(output_path):
+    yearly = (
+        df.dropna(
+            subset=[
+                "Year_from",
+                "full_weight_kg",
+                "volume__m3",
+                "mixed_fuel_consumption_per_100_km_l",
+            ]
+        )
+        .groupby("Year_from", as_index=False)
+        .agg(
+            median_weight_kg=("full_weight_kg", "median"),
+            median_volume_m3=("volume__m3", "median"),
+            median_fuel_l_100km=("mixed_fuel_consumption_per_100_km_l", "median"),
+            models_count=("mixed_fuel_consumption_per_100_km_l", "size"),
+        )
+        .sort_values("Year_from")
+    )
+    yearly = yearly[
+        (yearly["Year_from"] >= 1990)
+        & (yearly["Year_from"] <= 2020)
+        & (yearly["models_count"] >= 100)
+    ]
+
+    x = yearly["Year_from"].to_numpy(dtype=float)
+    y = yearly["median_volume_m3"].to_numpy(dtype=float)
+    z = yearly["median_weight_kg"].to_numpy(dtype=float)
+    fuel = yearly["median_fuel_l_100km"].to_numpy(dtype=float)
+
+    x_grid = np.linspace(x.min(), x.max(), 95)
+    y_padding = (y.max() - y.min()) * 0.10
+    y_grid = np.linspace(y.min() - y_padding, y.max() + y_padding, 70)
+    xx, yy = np.meshgrid(x_grid, y_grid)
+
+    x_scale = np.ptp(x) or 1
+    y_scale = np.ptp(y) or 1
+    distance_squared = (
+        ((xx[..., None] - x) / x_scale) ** 2
+        + ((yy[..., None] - y) / y_scale) ** 2
+    )
+    weights = 1 / (distance_squared + 0.004)
+    zz = np.sum(weights * z, axis=2) / np.sum(weights, axis=2)
+    fuel_grid = np.sum(weights * fuel, axis=2) / np.sum(weights, axis=2)
+
+    min_distance = np.sqrt(distance_squared.min(axis=2))
+    surface_mask = min_distance > 0.22
+    zz = np.where(surface_mask, np.nan, zz)
+    fuel_grid = np.where(surface_mask, np.nan, fuel_grid)
+
+    cmap = plt.get_cmap("RdYlGn_r")
+    fuel_norm = Normalize(vmin=np.nanmin(fuel_grid), vmax=np.nanmax(fuel_grid))
+    fuel_colors = cmap(fuel_norm(fuel_grid))
+    light = LightSource(azdeg=315, altdeg=35)
+    shaded_colors = light.shade_rgb(fuel_colors[..., :3], zz, blend_mode="soft")
+
+    fig = plt.figure(figsize=(12.5, 7.2))
+    ax = fig.add_subplot(111, projection="3d")
+    ax.set_position([0.02, 0.06, 0.77, 0.80])
+
+    ax.plot_surface(
+        xx,
+        yy,
+        zz,
+        facecolors=shaded_colors,
+        rstride=1,
+        cstride=1,
+        linewidth=0,
+        antialiased=True,
+        shade=False,
+        alpha=0.96,
+    )
+    fig.suptitle(
+        "Vehicle evolution as a shaded terrain",
+        fontsize=17,
+        fontweight="semibold",
+        y=0.94,
+    )
+    ax.set_xlabel("Year", labelpad=10)
+    ax.set_ylabel("Median vehicle volume (m3)", labelpad=10)
+    ax.set_zlabel("Median full weight (kg)", labelpad=10)
+    ax.view_init(elev=28, azim=-58)
+    ax.set_box_aspect((1.9, 1.0, 0.75))
+    ax.grid(alpha=0.22)
+
+    mappable = cm.ScalarMappable(norm=fuel_norm, cmap=cmap)
+    mappable.set_array([])
+    colorbar_ax = fig.add_axes([0.88, 0.20, 0.026, 0.55])
+    colorbar = fig.colorbar(mappable, cax=colorbar_ax)
+    colorbar.set_label("Median mixed fuel use (L/100 km)")
+
+    fig.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.show()
+
+
 weight_categories = aggregate_by_category("full_weight_kg")
 plot_categories(
     weight_categories,
@@ -530,3 +707,5 @@ plot_vehicle_ownership_growth("vehicle_ownership_growth.png")
 plot_ownership_vs_efficiency("ownership_vs_efficiency.png")
 plot_ownership_vs_efficiency("ownership_vs_efficiency_gain.png", show_efficiency_gain=True)
 plot_fuel_consumption_debug("fuel_consumption_debug.png")
+plot_weight_volume_fuel_indexed_timelines("weight_volume_fuel_indexed_timelines.png")
+plot_weight_volume_fuel_hillshade("weight_volume_fuel_hillshade.png")
