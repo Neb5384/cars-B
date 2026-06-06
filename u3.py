@@ -1,4 +1,3 @@
-import json
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -45,9 +44,9 @@ plt_vars = [
     "volume__m3",
 ]
 axis_labels = [
-    "Mixed fuel",
-    "Highway fuel",
-    "City fuel",
+    "Mixed\nfuel",
+    "Highway\nfuel",
+    "City\nfuel",
     "Weight",
     "Volume",
 ]
@@ -64,16 +63,20 @@ def configure_star_axis(ax):
     angles = np.linspace(0, 2 * np.pi, len(plt_vars), endpoint=False).tolist()
     angles += angles[:1]
 
+    ax.set_facecolor("#fbfbfb")
     ax.set_theta_offset(np.pi / 2)
     ax.set_theta_direction(-1)
     ax.set_xticks(angles[:-1])
     ax.set_xticklabels(axis_labels)
     ax.set_ylim(0, 1)
-    ax.set_yticks(np.linspace(0, 1, 6))
-    ax.set_yticklabels([f"{value:.1f}" for value in np.linspace(0, 1, 6)])
-    ax.tick_params(axis="x", pad=10, labelsize=9)
+    ax.set_yticks([0.25, 0.50, 0.75, 1.00])
+    ax.set_yticklabels(["0.25", "0.50", "0.75", "1.00"], color="0.35")
+    ax.set_rlabel_position(180)
+    ax.tick_params(axis="x", pad=12, labelsize=10, colors="0.20")
     ax.tick_params(axis="y", labelsize=8)
-    ax.grid(alpha=0.35)
+    ax.grid(color="0.80", linewidth=0.8, alpha=0.65)
+    ax.spines["polar"].set_color("0.75")
+    ax.spines["polar"].set_linewidth(0.9)
     return angles
 
 
@@ -119,35 +122,47 @@ def aggregate_by_category(category_column):
 
 
 def plot_categories(df_normalized, title, category_unit, value_format, output_path):
-    columns = 3
+    colors = ["#2f6fbb", "#d9822b", "#31936a", "#9b59b6", "#c84f4f"]
+    columns = 3 if len(df_normalized) >= 5 else 2
     rows = int(np.ceil(len(df_normalized) / columns))
     fig, axes = plt.subplots(
         rows,
         columns,
-        figsize=(13, 8),
-        constrained_layout=True,
+        figsize=(13.5, 8.8) if columns == 3 else (11, 9),
         subplot_kw={"polar": True},
     )
+    fig.subplots_adjust(
+        left=0.06,
+        right=0.94,
+        top=0.80,
+        bottom=0.07,
+        wspace=0.48,
+        hspace=0.58,
+    )
+    fig.patch.set_facecolor("white")
     axes = np.array(axes).reshape(-1)
 
-    for ax, (_, row) in zip(axes, df_normalized.iterrows()):
+    for ax, (plot_index, row) in zip(axes, df_normalized.iterrows()):
         angles = configure_star_axis(ax)
         values = row[plt_vars].tolist()
         values += values[:1]
-        line, = ax.plot(angles, values, linewidth=2)
-        ax.fill(angles, values, alpha=0.25, color=line.get_color())
+        color = colors[plot_index % len(colors)]
+        ax.plot(angles, values, linewidth=2.4, color=color)
+        ax.fill(angles, values, alpha=0.22, color=color)
         ax.set_title(
             f"{row['category']}\n"
             f"{value_format.format(row['min_category_value'])}-"
-            f"{value_format.format(row['max_category_value'])} {category_unit}\n"
-            f"n={int(row['cars_count'])}",
-            y=1.12,
+            f"{value_format.format(row['max_category_value'])} {category_unit}",
+            y=1.22,
+            fontsize=11,
+            fontweight="semibold",
+            color="0.15",
         )
 
     for ax in axes[len(df_normalized):]:
         ax.set_visible(False)
 
-    fig.suptitle(title, fontsize=16)
+    fig.suptitle(title, fontsize=17, fontweight="semibold", y=0.98)
     fig.savefig(output_path, dpi=300, bbox_inches="tight")
     plt.show()
 
@@ -246,49 +261,9 @@ def plot_vehicle_ownership_growth(output_path):
     plt.show()
 
 
-def load_passenger_car_vehicle_km(start_year=2013, end_year=2020):
-    rows = []
-    with open("series.jsonl") as file:
-        for line in file:
-            series = json.loads(line)
-            freq, regisveh, unit, vehicle, geo = series["dimensions"]
-            if (freq, regisveh, unit, vehicle) != ("A", "TERNAT_REG", "MIO_VKM", "CAR"):
-                continue
-
-            for period, value, _, _ in series["observations"][1:]:
-                rows.append(
-                    {
-                        "geo": geo,
-                        "year": int(period),
-                        "vehicle_km_million": float(value),
-                    }
-                )
-
-    vehicle_km = pd.DataFrame(rows)
-    selected_years = set(range(start_year, end_year + 1))
-    complete_geos = (
-        vehicle_km[vehicle_km["year"].isin(selected_years)]
-        .groupby("geo")["year"]
-        .nunique()
-    )
-    complete_geos = complete_geos[complete_geos.eq(len(selected_years))].index
-
-    return (
-        vehicle_km[
-            vehicle_km["geo"].isin(complete_geos)
-            & vehicle_km["year"].isin(selected_years)
-        ]
-        .groupby("year", as_index=False)
-        .agg(
-            vehicle_km_million=("vehicle_km_million", "sum"),
-            vehicle_km_countries=("geo", "nunique"),
-        )
-    )
-
-
-def plot_ownership_vs_efficiency(output_path):
-    start_year = 2013
-    end_year = 2019
+def plot_ownership_vs_efficiency(output_path, show_efficiency_gain=False):
+    start_year = 1990
+    end_year = 2020
     carhab = pd.read_csv("road_eqs_carhab_linear_2_0.csv")
     carhab["TIME_PERIOD"] = pd.to_numeric(carhab["TIME_PERIOD"], errors="coerce")
     carhab["OBS_VALUE"] = pd.to_numeric(carhab["OBS_VALUE"], errors="coerce")
@@ -313,75 +288,73 @@ def plot_ownership_vs_efficiency(output_path):
         .rename(columns={"Year_from": "year"})
     )
     efficiency["year"] = efficiency["year"].astype(int)
-    vehicle_km = load_passenger_car_vehicle_km(start_year, end_year)
 
-    comparison = ownership.merge(efficiency, on="year", how="inner").merge(vehicle_km, on="year", how="inner")
+    comparison = ownership.merge(efficiency, on="year", how="inner")
     comparison = comparison[(comparison["year"] >= start_year) & (comparison["year"] <= end_year)]
     comparison = comparison[comparison["models_count"] >= 100].sort_values("year")
 
     baseline = comparison.iloc[0]
     comparison["vehicle_growth_index"] = comparison["cars_per_1000"] / baseline["cars_per_1000"]
-    comparison["vehicle_km_index"] = (
-        comparison["vehicle_km_million"] / baseline["vehicle_km_million"]
-    )
     comparison["efficiency_gain_index"] = (
         baseline["median_fuel_l_100km"] / comparison["median_fuel_l_100km"]
     )
-    comparison["vkm_adjusted_consumption_proxy"] = (
-        comparison["vehicle_km_index"] / comparison["efficiency_gain_index"]
+    comparison["relative_fuel_consumption_index"] = (
+        comparison["median_fuel_l_100km"] / baseline["median_fuel_l_100km"]
+    )
+    comparison["ownership_adjusted_consumption_proxy"] = (
+        comparison["vehicle_growth_index"]
+        * comparison["relative_fuel_consumption_index"]
     )
 
     first = comparison.iloc[0]
     last = comparison.iloc[-1]
 
-    fig, ax = plt.subplots(figsize=(14, 7))
-    fig.subplots_adjust(left=0.08, right=0.72, top=0.86, bottom=0.14)
+    fig, (ax, ax_summary) = plt.subplots(
+        1,
+        2,
+        figsize=(15, 7),
+        gridspec_kw={"width_ratios": [4.5, 1.55]},
+    )
+    fig.subplots_adjust(left=0.08, right=0.96, top=0.86, bottom=0.14, wspace=0.56)
 
     ax.axhline(1, color="0.25", linewidth=1, linestyle=":", label=f"{int(first['year'])} baseline")
     ax.plot(
         comparison["year"],
         comparison["vehicle_growth_index"],
         color="#d62728",
-        linewidth=2,
-        alpha=0.8,
-        label="Vehicle ownership: cars / 1,000 inhabitants",
-    )
-    ax.plot(
-        comparison["year"],
-        comparison["vehicle_km_index"],
-        color="#ff7f0e",
         linewidth=3,
-        label="Passenger-car traffic: vehicle-km",
+        label="Vehicle ownership index",
     )
+    secondary_column = "efficiency_gain_index" if show_efficiency_gain else "relative_fuel_consumption_index"
+    secondary_label = "Efficiency index: 1990 fuel use / yearly fuel use" if show_efficiency_gain else "Fuel use index: yearly fuel use / 1990 fuel use"
+    secondary_annotation = "efficiency index" if show_efficiency_gain else "fuel use index"
     ax.plot(
         comparison["year"],
-        comparison["efficiency_gain_index"],
+        comparison[secondary_column],
         color="#2ca02c",
         linewidth=3,
-        label="Efficiency gain: lower L/100 km",
+        label=secondary_label,
     )
     ax.plot(
         comparison["year"],
-        comparison["vkm_adjusted_consumption_proxy"],
+        comparison["ownership_adjusted_consumption_proxy"],
         color="#1f77b4",
         linewidth=3,
         linestyle="--",
-        label="Combined proxy: vehicle-km x fuel consumption",
+        label="Net effect: ownership index x fuel use index",
     )
     ax.fill_between(
         comparison["year"],
         1,
-        comparison["vkm_adjusted_consumption_proxy"],
-        where=comparison["vkm_adjusted_consumption_proxy"] >= 1,
+        comparison["ownership_adjusted_consumption_proxy"],
+        where=comparison["ownership_adjusted_consumption_proxy"] >= 1,
         color="#1f77b4",
         alpha=0.12,
-        label=f"Remaining pressure above {int(first['year'])}",
     )
-
     ax.annotate(
         f"x{last['vehicle_growth_index']:.2f}\nmore vehicles",
         xy=(last["year"], last["vehicle_growth_index"]),
-        xytext=(1.04, last["vehicle_growth_index"]),
+        xytext=(1.035, last["vehicle_growth_index"]),
         textcoords=ax.get_yaxis_transform(),
         arrowprops={"arrowstyle": "->", "color": "#d62728"},
         color="#d62728",
@@ -391,21 +364,9 @@ def plot_ownership_vs_efficiency(output_path):
         annotation_clip=False,
     )
     ax.annotate(
-        f"x{last['vehicle_km_index']:.2f}\nvehicle-km",
-        xy=(last["year"], last["vehicle_km_index"]),
-        xytext=(1.04, last["vehicle_km_index"]),
-        textcoords=ax.get_yaxis_transform(),
-        arrowprops={"arrowstyle": "->", "color": "#ff7f0e"},
-        color="#ff7f0e",
-        fontsize=10,
-        ha="left",
-        va="center",
-        annotation_clip=False,
-    )
-    ax.annotate(
-        f"x{last['efficiency_gain_index']:.2f}\nefficiency gain",
-        xy=(last["year"], last["efficiency_gain_index"]),
-        xytext=(1.04, last["efficiency_gain_index"]),
+        f"x{last[secondary_column]:.2f}\n{secondary_annotation}",
+        xy=(last["year"], last[secondary_column]),
+        xytext=(1.035, last[secondary_column]),
         textcoords=ax.get_yaxis_transform(),
         arrowprops={"arrowstyle": "->", "color": "#2ca02c"},
         color="#2ca02c",
@@ -415,9 +376,9 @@ def plot_ownership_vs_efficiency(output_path):
         annotation_clip=False,
     )
     ax.annotate(
-        f"x{last['vkm_adjusted_consumption_proxy']:.2f}\nnet proxy",
-        xy=(last["year"], last["vkm_adjusted_consumption_proxy"]),
-        xytext=(1.04, last["vkm_adjusted_consumption_proxy"]),
+        f"x{last['ownership_adjusted_consumption_proxy']:.2f}\nnet proxy",
+        xy=(last["year"], last["ownership_adjusted_consumption_proxy"]),
+        xytext=(1.035, last["ownership_adjusted_consumption_proxy"]),
         textcoords=ax.get_yaxis_transform(),
         arrowprops={"arrowstyle": "->", "color": "#1f77b4"},
         color="#1f77b4",
@@ -428,7 +389,7 @@ def plot_ownership_vs_efficiency(output_path):
     )
 
     ax.set_title(
-        "Vehicle-km growth offsets part of efficiency gains",
+        "Efficiency improves, but vehicle ownership grows faster",
         fontsize=16,
         pad=14,
     )
@@ -436,15 +397,58 @@ def plot_ownership_vs_efficiency(output_path):
     ax.set_ylabel(f"Index ({int(first['year'])} = 1)")
     plotted_columns = [
         "vehicle_growth_index",
-        "vehicle_km_index",
-        "efficiency_gain_index",
-        "vkm_adjusted_consumption_proxy",
+        secondary_column,
+        "ownership_adjusted_consumption_proxy",
     ]
-    y_min = max(0.9, comparison[plotted_columns].min().min() - 0.05)
+    y_min = max(0.65, comparison[plotted_columns].min().min() - 0.05)
     y_max = comparison[plotted_columns].max().max() + 0.08
     ax.set_ylim(y_min, y_max)
     ax.grid(alpha=0.25)
     ax.legend(loc="upper left")
+
+    summary_secondary_value = (
+        last["efficiency_gain_index"] - 1
+        if show_efficiency_gain
+        else last["relative_fuel_consumption_index"] - 1
+    )
+    summary_secondary_label = "Efficiency" if show_efficiency_gain else "Fuel/veh."
+    summary_values = [
+        last["vehicle_growth_index"] - 1,
+        summary_secondary_value,
+        last["ownership_adjusted_consumption_proxy"] - 1,
+    ]
+    summary_labels = ["Vehicles", summary_secondary_label, "Net"]
+    summary_colors = ["#d62728", "#2ca02c", "#1f77b4"]
+    y_positions = np.arange(len(summary_values))
+
+    ax_summary.axvline(0, color="0.25", linewidth=1)
+    ax_summary.barh(y_positions, summary_values, color=summary_colors, alpha=0.88)
+    ax_summary.set_yticks(y_positions)
+    ax_summary.set_yticklabels(summary_labels)
+    ax_summary.tick_params(axis="y", pad=8)
+    ax_summary.invert_yaxis()
+    ax_summary.set_title(f"{int(first['year'])} to {int(last['year'])}", fontsize=12)
+    ax_summary.set_xlabel("Change vs baseline")
+    ax_summary.grid(axis="x", alpha=0.25)
+    ax_summary.spines[["top", "right", "left"]].set_visible(False)
+
+    for y, value in zip(y_positions, summary_values):
+        x_offset = 0.035 if value >= 0 else -0.035
+        ha = "left" if value >= 0 else "right"
+        ax_summary.text(
+            value + x_offset,
+            y,
+            f"{value:+.0%}",
+            va="center",
+            ha=ha,
+            fontsize=10,
+            fontweight="semibold",
+            color="0.15",
+        )
+
+    x_min = min(summary_values + [0]) - 0.22
+    x_max = max(summary_values + [0]) + 0.24
+    ax_summary.set_xlim(x_min, x_max)
 
     fig.savefig(output_path, dpi=300, bbox_inches="tight")
     plt.show()
@@ -524,4 +528,5 @@ plot_categories(
 
 plot_vehicle_ownership_growth("vehicle_ownership_growth.png")
 plot_ownership_vs_efficiency("ownership_vs_efficiency.png")
+plot_ownership_vs_efficiency("ownership_vs_efficiency_gain.png", show_efficiency_gain=True)
 plot_fuel_consumption_debug("fuel_consumption_debug.png")
