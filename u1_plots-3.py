@@ -347,7 +347,7 @@ else:
             colors=colors,
             pctdistance=0.75,
             wedgeprops=dict(linewidth=0.8, edgecolor="white"),
-            textprops=dict(fontsize=11, fontweight="bold"),
+            textprops=dict(fontsize=11, fontweight="bold", color="#ff861c"),
         )
         ax.set_title(f"{DECADE_LABELS[decade]}\n(n={counts.sum()})", fontsize=12, fontweight="bold")
 
@@ -388,7 +388,7 @@ else:
 # ════════════════════════════════════════════════════════════════════════════
 
 BODY_COL = None
-for candidate in ["Body_type", "Vehicle_Style", "vehicle_style", "Body_Type"]:
+for candidate in ["body_type", "Vehicle_Style", "vehicle_style", "Body_Type"]:
     if candidate in df.columns:
         BODY_COL = candidate
         break
@@ -456,7 +456,7 @@ else:
                 colors=colors,
                 pctdistance=0.75,
                 wedgeprops=dict(linewidth=0.8, edgecolor="white"),
-                textprops=dict(fontsize=11, fontweight="bold"),
+                textprops=dict(fontsize=11, fontweight="bold", color="green"),
             )
             ax.set_title(
                 f"{DECADE_LABELS[decade]}\n(n={counts.sum()})",
