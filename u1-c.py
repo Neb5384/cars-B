@@ -36,9 +36,9 @@ HOLD_FRAMES   = 4     # extra copies of last frame
 VMIN, VMAX    = 100, 800
 CMAP          = plt.cm.YlOrRd
 BBOX          = (-25, 45, 34, 72)   # lon_min, lon_max, lat_min, lat_max
-BG            = "#1a1a2e"
-NO_DATA_CLR   = "#3a3a5c"
-BORDER_CLR    = "#555577"
+BG            = "#ffffff"           # white background
+NO_DATA_CLR   = "#cccccc"          # light grey for missing data
+BORDER_CLR    = "#888888"          # mid-grey borders
 DPI           = 130
 
 # iso2 → iso3 for World Bank population data
@@ -55,14 +55,10 @@ ISO2_TO_ISO3 = {
 # ── 1. Load & clean Eurostat data ───────────────────────────────────────────────
 print("Loading data...")
 df = pd.read_csv(CSV_PATH)[["geo", "TIME_PERIOD", "OBS_VALUE"]].copy()
-df = df[~df["geo"].isin(["EU27_2020", "LI"])]   # drop EU aggregate & Liechtenstein
+df = df[~df["geo"].isin(["EU27_2020", "LI"])]
 df = df[df["TIME_PERIOD"] >= START_YEAR]
-df["iso2"] = df["geo"].replace({"EL": "GR", "UK": "GB"})  # align with Natural Earth codes
+df["iso2"] = df["geo"].replace({"EL": "GR", "UK": "GB"})
 
-# ── DATA CLEANING ────────────────────────────────────────────────────────────────
-# Build a full (country × year) grid and interpolate gaps linearly.
-# Only interior gaps are filled; leading/trailing NaNs are left as-is
-# (a country with no data at all stays invisible).
 all_years     = list(range(df["TIME_PERIOD"].min(), df["TIME_PERIOD"].max() + 1))
 all_countries = df["iso2"].unique()
 full_index    = pd.MultiIndex.from_product([all_countries, all_years],
@@ -74,8 +70,7 @@ df = (
       .transform(lambda s: s.interpolate(method="linear", limit_area="inside"))
       .reset_index()
 )
-df = df.dropna(subset=["OBS_VALUE"])             # drop still-empty edges
-# ── END DATA CLEANING ────────────────────────────────────────────────────────────
+df = df.dropna(subset=["OBS_VALUE"])
 
 years = sorted(df["TIME_PERIOD"].unique())
 print(f"  {years[0]}-{years[-1]}, {df['iso2'].nunique()} countries")
@@ -91,10 +86,13 @@ pop.columns = ["iso3", "year", "population"]
 df["iso3"] = df["iso2"].map(ISO2_TO_ISO3)
 merged = df.merge(pop, left_on=["iso3", "TIME_PERIOD"], right_on=["iso3", "year"], how="inner")
 
-# Keep only countries that have data for every year in the range
-n_years   = len(years)
-coverage  = merged.groupby("iso2")["TIME_PERIOD"].count()
-full_iso2 = coverage[coverage == n_years].index.tolist()
+n_years      = len(years)
+first_year   = merged.groupby("iso2")["TIME_PERIOD"].min()
+early_iso2   = first_year[first_year <= START_YEAR].index
+coverage     = merged.groupby("iso2")["TIME_PERIOD"].count()
+full_iso2    = coverage[
+    (coverage == n_years) & (coverage.index.isin(early_iso2))
+].index.tolist()
 print(f"  Countries with full {START_YEAR}-{years[-1]} coverage: {len(full_iso2)}")
 
 merged_full = merged[merged["iso2"].isin(full_iso2)].copy()
@@ -110,7 +108,6 @@ if not os.path.exists(GEOJSON_LOCAL):
 
 # ── 4. Parse GeoJSON → per-country polygon rings ───────────────────────────────
 def geom_to_rings(geometry):
-    """Yield (exterior_coords, [hole_coords, ...]) for every polygon in a GeoJSON geometry."""
     t = geometry["type"]
     if t == "Polygon":
         yield geometry["coordinates"][0], geometry["coordinates"][1:]
@@ -132,16 +129,15 @@ for feat in gj["features"]:
 
 print(f"  {len(country_polys)} countries/territories loaded")
 
-# ── 5. Draw a single frame (map left, line plot right) ──────────────────────────
+# ── 5. Draw a single frame ───────────────────────────────────────────────────────
 def draw_frame(year: int, val_map: dict, path: str) -> None:
     norm = Normalize(vmin=VMIN, vmax=VMAX)
 
-    # Wide figure: map on left (~70%), line plot on right (~30%)
     fig, (ax, ax_line) = plt.subplots(
         1, 2,
-        figsize=(14, 9),
+        figsize=(14, 6),
         facecolor=BG,
-        gridspec_kw={"width_ratios": [7, 3], "wspace": 0.04},
+        gridspec_kw={"width_ratios": [75, 25], "wspace": 0.15},
     )
 
     # ── Map ────────────────────────────────────────────────────────────────────
@@ -165,23 +161,21 @@ def draw_frame(year: int, val_map: dict, path: str) -> None:
                     edgecolor=BORDER_CLR, linewidth=0.3, zorder=2,
                 ))
 
-    # Colorbar beneath map
     sm = ScalarMappable(cmap=CMAP, norm=norm)
     sm.set_array([])
     cbar = fig.colorbar(sm, ax=ax, orientation="horizontal",
                         fraction=0.03, pad=0.01, shrink=0.7)
-    cbar.ax.tick_params(colors="white", labelsize=9)
-    cbar.set_label("Passenger cars per 1 000 inhabitants", color="white", fontsize=10)
-    cbar.outline.set_edgecolor("white")
+    cbar.ax.tick_params(colors="#333333", labelsize=9)
+    cbar.set_label("Passenger cars per 1 000 inhabitants", color="#333333", fontsize=10)
+    cbar.outline.set_edgecolor("#333333")
 
-    # Year label
-    ax.text(0.5, 0.97, str(year), transform=ax.transAxes,
-            ha="center", va="top", fontsize=42, fontweight="bold", color="white", alpha=0.9)
+    ax.text(0.5, 1.02, str(year), transform=ax.transAxes,
+            ha="center", va="bottom", fontsize=42, fontweight="bold", color="#222222", alpha=0.9)
 
     # ── Line plot ──────────────────────────────────────────────────────────────
-    ax_line.set_facecolor("#12122a")
+    ax_line.set_facecolor("#ffffff")   # very light grey panel
     for spine in ax_line.spines.values():
-        spine.set_edgecolor("#444466")
+        spine.set_edgecolor("#bbbbbb")
 
     ts_years  = list(total_cars_ts.index)
     ts_values = list(total_cars_ts.values)
@@ -189,32 +183,28 @@ def draw_frame(year: int, val_map: dict, path: str) -> None:
 
     y_pad = (max(ts_values) - min(ts_values)) * 0.08
 
-    # Full faint trace
-    ax_line.plot(ts_years, ts_values, color="#aaaacc", linewidth=1, alpha=0.25)
-    # Progress line
+    ax_line.plot(ts_years, ts_values, color="#aaaaaa", linewidth=1, alpha=0.4)
     ax_line.plot(ts_years[:idx_now], ts_values[:idx_now],
-                 color="#f4a261", linewidth=2.5, solid_capstyle="round")
-    # Current dot
-    ax_line.scatter([year], [ts_values[idx_now - 1]], color="#f4a261", s=60, zorder=5)
-    # Value label
+                 color="#e05c1a", linewidth=2.5, solid_capstyle="round")
+    ax_line.scatter([year], [ts_values[idx_now - 1]], color="#e05c1a", s=60, zorder=5)
     ax_line.text(year, ts_values[idx_now - 1] + y_pad,
                  f"{ts_values[idx_now - 1]:.0f}M",
-                 color="#f4a261", fontsize=10, ha="center", va="bottom", fontweight="bold")
+                 color="#e05c1a", fontsize=10, ha="center", va="bottom", fontweight="bold")
 
     ax_line.set_xlim(ts_years[0] - 0.5, ts_years[-1] + 0.5)
     ax_line.set_ylim(min(ts_values) - y_pad, max(ts_values) + y_pad * 3)
-    ax_line.tick_params(colors="#aaaacc", labelsize=9)
+    ax_line.tick_params(colors="#444444", labelsize=9)
     ax_line.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{x:.0f}M"))
     ax_line.xaxis.set_major_locator(plt.MultipleLocator(5))
-    ax_line.grid(axis="y", color="#2a2a4a", linewidth=0.8, linestyle="--")
+    ax_line.grid(axis="y", color="#dddddd", linewidth=0.8, linestyle="--")
     ax_line.set_title(
-        f"Total passenger cars\n({len(full_iso2)} countries, full coverage)",
-        color="#ccccee", fontsize=10, pad=10, linespacing=1.5,
+        f"Total passenger cars\n({len(full_iso2)} countries)",
+        color="#333333", fontsize=10, pad=10, linespacing=1.5,
     )
-    ax_line.set_xlabel("Year", color="#aaaacc", fontsize=9)
-    ax_line.set_ylabel("Passenger cars", color="#aaaacc", fontsize=9)
+    ax_line.set_xlabel("Year", color="#444444", fontsize=9)
+    ax_line.set_ylabel("Passenger cars", color="#444444", fontsize=9)
 
-    plt.savefig(path, dpi=DPI, bbox_inches="tight", facecolor=BG)
+    plt.savefig(path, dpi=DPI, facecolor=BG)
     plt.close()
 
 # ── 6. Render all frames ─────────────────────────────────────────────────────────

@@ -290,22 +290,23 @@ savefig("area_normalised_trends.png")
 #   slice is a vote for a heavier vehicle class.
 # ════════════════════════════════════════════════════════════════════════════
 
-# Size classes ordered light → heavy (no "Very Large")
+# Size classes ordered light → heavy
 SIZE_LABELS = [
-    "Mini (<1000 kg)",
-    "Small (1000–1400 kg)",
-    "Medium (1400–1800 kg)",
-    "Large (>1800 kg)",
+    "Mini (<1655 kg)",
+    "Small (1655–1870 kg)",
+    "Medium (1870–2050 kg)",
+    "Large (2050–2310 kg)",
+    "Extra-Large (>2310 kg)",
 ]
 
-# Single sequential palette: white → dark blue (light → heavy)
-SIZE_COLORS = ["#ffffff", "#93c5fd", "#3b82f6", "#1d4ed8"]
+# Single sequential palette: white → blue (light → heavy)
+SIZE_COLORS = ["#d3e4f9", "#93c5fd", "#3b82f6", "#1d4ed8", "#04288D"]
 color_map = dict(zip(SIZE_LABELS, SIZE_COLORS))
 
-# Derive size bucket from curb weight
+# Derive size bucket from full weight
 df["_size_class"] = pd.cut(
-    df["curb_weight_kg"],
-    bins=[0, 1000, 1400, 1800, 99999],
+    df["full_weight_kg"],
+    bins=[0, 1655, 1870, 2050, 2310, 99999],
     labels=SIZE_LABELS,
 )
 size_col = "_size_class"
@@ -346,7 +347,7 @@ else:
             colors=colors,
             pctdistance=0.75,
             wedgeprops=dict(linewidth=0.8, edgecolor="white"),
-            textprops=dict(fontsize=11, fontweight="bold"),
+            textprops=dict(fontsize=11, fontweight="bold", color="#ff861c"),
         )
         ax.set_title(f"{DECADE_LABELS[decade]}\n(n={counts.sum()})", fontsize=12, fontweight="bold")
 
@@ -373,5 +374,118 @@ else:
     )
     plt.tight_layout()
     savefig("pie_evolving_size_class.png")
+
+# ════════════════════════════════════════════════════════════════════════════
+# PLOT 10 – EVOLVING PIE CHARTS: Body/car-type share per decade
+#
+# WHY THIS SUPPORTS THE THESIS:
+#   Sedans and hatchbacks — typically the lightest body styles — lose market
+#   share decade by decade, while SUVs, crossovers, and pickups — among the
+#   heaviest — grow steadily.  This shift in body-type preference is the
+#   consumer-behaviour story behind the rising weight trend: it is not just
+#   that individual models got heavier, but that buyers migrated en masse
+#   toward fundamentally heavier vehicle categories.
+# ════════════════════════════════════════════════════════════════════════════
+
+BODY_COL = None
+for candidate in ["body_type", "Vehicle_Style", "vehicle_style", "Body_Type"]:
+    if candidate in df.columns:
+        BODY_COL = candidate
+        break
+
+if BODY_COL is None:
+    print("No body-type column found — skipping Plot 10.")
+else:
+    df_body = df.dropna(subset=["Year_from", BODY_COL]).copy()
+    df_body["Decade"] = (df_body["Year_from"] // 10 * 10).astype(int)
+    df_body = df_body[df_body["Decade"].isin([1980, 1990, 2000, 2010])]
+
+    # Find the top N most frequent body types across the whole period
+    TOP_N = 6
+    top_types = (
+        df_body[BODY_COL]
+        .value_counts()
+        .head(TOP_N)
+        .index.tolist()
+    )
+
+    # Recode everything outside top N as "Other"
+    df_body["_body"] = df_body[BODY_COL].where(
+        df_body[BODY_COL].isin(top_types), other="Other"
+    )
+
+    # Colour palette: qualitative, distinct colours per type
+    TYPE_PALETTE = [
+        "#2563eb", "#16a34a", "#dc2626", "#d97706",
+        "#7c3aed", "#0891b2", "#9ca3af",   # last = Other
+    ]
+    all_types = top_types + (["Other"] if "Other" in df_body["_body"].values else [])
+    type_color_map = {t: TYPE_PALETTE[i] for i, t in enumerate(all_types)}
+
+    DECADES = [1980, 1990, 2000, 2010]
+    DECADE_LABELS = {
+        1980: "1980\u20131989",
+        1990: "1990\u20131999",
+        2000: "2000\u20132009",
+        2010: "2010\u20132019",
+    }
+
+    decade_body_data = {}
+    for d in DECADES:
+        sub = df_body[df_body["Decade"] == d]["_body"].value_counts()
+        if sub.sum() >= 10:
+            # Keep consistent order: top types first, then Other
+            sub = sub.reindex(all_types, fill_value=0)
+            sub = sub[sub > 0]
+            decade_body_data[d] = sub
+
+    n = len(decade_body_data)
+    if n == 0:
+        print("Not enough body-type data for evolving pie charts — skipping Plot 10.")
+    else:
+        fig, axes = plt.subplots(1, n, figsize=(5 * n, 5.5))
+        axes = np.array(axes).flatten()
+
+        for ax, (decade, counts) in zip(axes, decade_body_data.items()):
+            colors = [type_color_map[t] for t in counts.index]
+            ax.pie(
+                counts,
+                labels=None,
+                autopct="%1.0f%%",
+                startangle=90,
+                colors=colors,
+                pctdistance=0.75,
+                wedgeprops=dict(linewidth=0.8, edgecolor="white"),
+                textprops=dict(fontsize=11, fontweight="bold", color="green"),
+            )
+            ax.set_title(
+                f"{DECADE_LABELS[decade]}\n(n={counts.sum()})",
+                fontsize=12, fontweight="bold"
+            )
+
+        for ax in axes[len(decade_body_data):]:
+            ax.set_visible(False)
+
+        from matplotlib.patches import Patch
+        legend_handles = [
+            Patch(facecolor=type_color_map[t], label=t) for t in all_types
+        ]
+        fig.legend(
+            handles=legend_handles,
+            title="Body Type",
+            loc="lower center",
+            ncol=min(len(all_types), 4),
+            fontsize=9,
+            bbox_to_anchor=(0.5, -0.06),
+        )
+        fig.suptitle(
+            "Body-Type Share per Decade\n"
+            "(shift from light body styles toward heavier SUVs / crossovers)",
+            fontsize=13,
+            y=1.02,
+        )
+        plt.tight_layout()
+        savefig("pie_evolving_body_type.png")
+
 
 print("\nAll plots generated successfully.")
